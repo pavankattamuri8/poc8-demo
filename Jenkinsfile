@@ -1,19 +1,20 @@
 pipeline {
     agent any
+ 
     environment {
         SCANNER_HOME    = tool 'sonar-scanner'
-        SONAR_SERVER    = 'SonarQube'
-        DOCKER_HUB_USER = 'bhanutejaravutla'
+        SONAR_SERVER    = 'demo'
+        DOCKER_HUB_USER = 'venkatapavank'
         IMAGE_NAME      = 'my-app'
-        IMAGE_TAG       = 'latest'
+        IMAGE_TAG       = "${BUILD_NUMBER}"
     }
  
     stages {
  
-        stage('Fetch Code') {
+        stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/tejaravutla287/POC8.git'
+                    url: 'https://github.com/pavankattamuri8/poc8-demo.git'
             }
         }
  
@@ -31,29 +32,20 @@ pipeline {
             }
         }
  
-        stage('Push to Docker Hub') {
+        stage('Login & Push to Docker Hub') {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'docker-hub-creds',
-                        usernameVariable: 'bhanutejaravutla',
-                        passwordVariable: 'Bhanu@145'
+                        credentialsId: 'docker-cred',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-                        sh '''#!/bin/bash
-                                        set +x
-                                        echo "$Bhanu@145" | docker login -u "bhanutejaravutla" --password-stdin
-                                        docker push bhanutejaravutla/my-app:latest
-                                    '''
- 
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
                 }
-            }
-        }
- 
-        stage('Deploy to Client (Local Run)') {
-            steps {
-                sh "docker rm -f my-app-container || true"
-                sh "docker run -d -p 80:80 --name my-app-container ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
